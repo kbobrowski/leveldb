@@ -21,10 +21,7 @@ import com.google.common.base.Throwables;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 
 final class ByteBufferSupport
@@ -33,6 +30,7 @@ final class ByteBufferSupport
 
     static {
         MethodHandle invoker;
+        /*
         try {
             // Java 9 added an invokeCleaner method to Unsafe to work around
             // module visibility issues for code that used to rely on DirectByteBuffer's cleaner()
@@ -44,6 +42,8 @@ final class ByteBufferSupport
                     .bindTo(theUnsafe.get(null));
         }
         catch (Exception e) {
+
+         */
             // fall back to pre-java 9 compatible behavior
             try {
                 Class<?> directByteBufferClass = Class.forName("java.nio.DirectByteBuffer");
@@ -63,7 +63,7 @@ final class ByteBufferSupport
             catch (Exception e1) {
                 throw new AssertionError(e1);
             }
-        }
+        /* } */
         INVOKE_CLEANER = invoker;
     }
 
