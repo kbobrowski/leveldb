@@ -42,27 +42,26 @@ final class ByteBufferSupport
                     .bindTo(theUnsafe.get(null));
         }
         catch (Exception e) {
-
          */
-            // fall back to pre-java 9 compatible behavior
-            try {
-                Class<?> directByteBufferClass = Class.forName("java.nio.DirectByteBuffer");
-                Class<?> cleanerClass = Class.forName("sun.misc.Cleaner");
+        // fall back to pre-java 9 compatible behavior
+        try {
+            Class<?> directByteBufferClass = Class.forName("java.nio.DirectByteBuffer");
+            Class<?> cleanerClass = Class.forName("sun.misc.Cleaner");
 
-                Method cleanerMethod = directByteBufferClass.getDeclaredMethod("cleaner");
-                cleanerMethod.setAccessible(true);
-                MethodHandle getCleaner = MethodHandles.lookup().unreflect(cleanerMethod);
+            Method cleanerMethod = directByteBufferClass.getDeclaredMethod("cleaner");
+            cleanerMethod.setAccessible(true);
+            MethodHandle getCleaner = MethodHandles.lookup().unreflect(cleanerMethod);
 
-                Method cleanMethod = cleanerClass.getDeclaredMethod("clean");
-                cleanerMethod.setAccessible(true);
-                MethodHandle clean = MethodHandles.lookup().unreflect(cleanMethod);
+            Method cleanMethod = cleanerClass.getDeclaredMethod("clean");
+            cleanerMethod.setAccessible(true);
+            MethodHandle clean = MethodHandles.lookup().unreflect(cleanMethod);
 
-                clean = MethodHandles.dropArguments(clean, 1, directByteBufferClass);
-                invoker = MethodHandles.foldArguments(clean, getCleaner);
-            }
-            catch (Exception e1) {
-                throw new AssertionError(e1);
-            }
+            clean = MethodHandles.dropArguments(clean, 1, directByteBufferClass);
+            invoker = MethodHandles.foldArguments(clean, getCleaner);
+        }
+        catch (Exception e1) {
+            throw new AssertionError(e1);
+        }
         /* } */
         INVOKE_CLEANER = invoker;
     }
