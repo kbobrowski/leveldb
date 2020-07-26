@@ -19,51 +19,35 @@ package org.iq80.leveldb.fileenv;
 
 import com.google.common.base.Throwables;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.nio.MappedByteBuffer;
 
-final class ByteBufferSupport
+public final class ByteBufferSupport
 {
-    private static final MethodHandle INVOKE_CLEANER;
+    private static final Method getCleaner;
+    private static final Method clean;
 
     static {
-        MethodHandle invoker;
-        /*
         try {
-            // Java 9 added an invokeCleaner method to Unsafe to work around
-            // module visibility issues for code that used to rely on DirectByteBuffer's cleaner()
-            Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
-            Field theUnsafe = unsafeClass.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            invoker = MethodHandles.lookup()
-                    .findVirtual(unsafeClass, "invokeCleaner", MethodType.methodType(void.class, ByteBuffer.class))
-                    .bindTo(theUnsafe.get(null));
+            getCleaner = Class.forName("java.nio.DirectByteBuffer").getDeclaredMethod("cleaner");
+            getCleaner.setAccessible(true);
         }
-        catch (Exception e) {
-         */
-        // fall back to pre-java 9 compatible behavior
+        catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+
         try {
-            Class<?> directByteBufferClass = Class.forName("java.nio.DirectByteBuffer");
-            Class<?> cleanerClass = Class.forName("sun.misc.Cleaner");
-
-            Method cleanerMethod = directByteBufferClass.getDeclaredMethod("cleaner");
-            cleanerMethod.setAccessible(true);
-            MethodHandle getCleaner = MethodHandles.lookup().unreflect(cleanerMethod);
-
-            Method cleanMethod = cleanerClass.getDeclaredMethod("clean");
-            cleanerMethod.setAccessible(true);
-            MethodHandle clean = MethodHandles.lookup().unreflect(cleanMethod);
-
-            clean = MethodHandles.dropArguments(clean, 1, directByteBufferClass);
-            invoker = MethodHandles.foldArguments(clean, getCleaner);
+            Class<?> returnType = getCleaner.getReturnType();
+            if (Runnable.class.isAssignableFrom(returnType)) {
+                clean = Runnable.class.getMethod("run");
+            }
+            else {
+                clean = returnType.getMethod("clean");
+            }
         }
-        catch (Exception e1) {
-            throw new AssertionError(e1);
+        catch (NoSuchMethodException e) {
+            throw new AssertionError(e);
         }
-        /* } */
-        INVOKE_CLEANER = invoker;
     }
 
     private ByteBufferSupport()
@@ -73,9 +57,10 @@ final class ByteBufferSupport
     public static void unmap(MappedByteBuffer buffer)
     {
         try {
-            INVOKE_CLEANER.invoke(buffer);
+            Object cleaner = getCleaner.invoke(buffer);
+            clean.invoke(cleaner);
         }
-        catch (Throwable ignored) {
+        catch (Exception ignored) {
             throw Throwables.propagate(ignored);
         }
     }
